@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
   pages: write
   id-token: write
 
@@ -26,25 +27,85 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Verify install, typecheck, lint and build
+        id: verification
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LOG="$RUNNER_TEMP/acai-redesign-build.log"
+          : > "$LOG"
 
-      - name: Typecheck
-        run: npm run typecheck
+          run_check() {
+            label="$1"
+            shift
+            echo "===== $label =====" | tee -a "$LOG"
+            "$@" >> "$LOG" 2>&1
+            code=$?
+            echo "exit_code=$code" | tee -a "$LOG"
+            echo | tee -a "$LOG"
+            return $code
+          }
 
-      - name: Lint
-        run: npm run lint
+          set +e
+          run_check "npm install" npm install --no-audit --no-fund
+          INSTALL_CODE=$?
+          if [ "$INSTALL_CODE" -eq 0 ]; then
+            run_check "npm run typecheck" npm run typecheck
+            TYPECHECK_CODE=$?
+            run_check "npm run lint" npm run lint
+            LINT_CODE=$?
+            run_check "npm run build" npm run build
+            BUILD_CODE=$?
+          else
+            TYPECHECK_CODE=99
+            LINT_CODE=99
+            BUILD_CODE=99
+          fi
 
-      - name: Build
-        run: npm run build
+          {
+            echo "===== summary ====="
+            echo "commit=$GITHUB_SHA"
+            echo "install=$INSTALL_CODE"
+            echo "typecheck=$TYPECHECK_CODE"
+            echo "lint=$LINT_CODE"
+            echo "build=$BUILD_CODE"
+          } >> "$LOG"
+
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai redesign build $GITHUB_SHA" --body-file "$LOG" || true
+
+          if [ "$INSTALL_CODE" -ne 0 ] || [ "$TYPECHECK_CODE" -ne 0 ] || [ "$LINT_CODE" -ne 0 ] || [ "$BUILD_CODE" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Setup Pages
+        id: setup_pages
+        continue-on-error: true
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
+        id: upload_pages
+        continue-on-error: true
         uses: actions/upload-pages-artifact@v4
         with:
           path: ./dist
+
+      - name: Verify Pages build phase
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SETUP_OUTCOME: ${{ steps.setup_pages.outcome }}
+          UPLOAD_OUTCOME: ${{ steps.upload_pages.outcome }}
+        run: |
+          BODY="$RUNNER_TEMP/acai-redesign-pages.txt"
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "configure_pages=$SETUP_OUTCOME"
+            echo "upload_pages_artifact=$UPLOAD_OUTCOME"
+          } > "$BODY"
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai redesign pages $GITHUB_SHA" --body-file "$BODY" || true
+          if [ "$SETUP_OUTCOME" != "success" ] || [ "$UPLOAD_OUTCOME" != "success" ]; then exit 1; fi
 
   deploy:
     environment:
@@ -55,4 +116,28 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
+
+      - name: Verify deployment and smoke test
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_OUTCOME: ${{ steps.deployment.outcome }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          BODY="$RUNNER_TEMP/acai-redesign-deploy.txt"
+          STATUS="000"
+          if [ "$DEPLOY_OUTCOME" = "success" ] && [ -n "$PAGE_URL" ]; then
+            sleep 4
+            STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" "$PAGE_URL" || true)
+          fi
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "deploy_pages=$DEPLOY_OUTCOME"
+            echo "page_url=$PAGE_URL"
+            echo "http_status=$STATUS"
+          } > "$BODY"
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai redesign deploy $GITHUB_SHA" --body-file "$BODY" || true
+          if [ "$DEPLOY_OUTCOME" != "success" ] || [ "$STATUS" != "200" ]; then exit 1; fi
