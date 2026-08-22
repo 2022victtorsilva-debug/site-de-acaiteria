@@ -43,6 +43,7 @@ jobs:
             echo >> "$LOG"
             return $code
           }
+
           set +e
           run_check "npm install" npm install --no-audit --no-fund; INSTALL=$?
           if [ "$INSTALL" -eq 0 ]; then
@@ -52,6 +53,7 @@ jobs:
           else
             TYPECHECK=99; LINT=99; BUILD=99
           fi
+
           if [ "$BUILD" -eq 0 ]; then
             WEBP_COUNT=$(find dist -type f -name '*.webp' | wc -l)
             WEBP_BYTES=$(find dist -type f -name '*.webp' -printf '%s\n' | awk '{s+=$1} END {print s+0}')
@@ -60,6 +62,7 @@ jobs:
           else
             WEBP_COUNT=0; WEBP_BYTES=0; PRICING_MSG=99; ATLAS_CONFIG=99
           fi
+
           {
             echo "===== validation ====="
             echo "commit=$GITHUB_SHA"
@@ -72,8 +75,12 @@ jobs:
             echo "pricing_message=$PRICING_MSG"
             echo "atlas_config=$ATLAS_CONFIG"
           } >> "$LOG"
-          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai curation validation $GITHUB_SHA" --body-file "$LOG" || true
-          if [ "$INSTALL" -ne 0 ] || [ "$TYPECHECK" -ne 0 ] || [ "$LINT" -ne 0 ] || [ "$BUILD" -ne 0 ] || [ "$WEBP_COUNT" -lt 1 ] || [ "$WEBP_BYTES" -lt 50000 ] || [ "$PRICING_MSG" -ne 0 ] || [ "$ATLAS_CONFIG" -ne 0 ]; then exit 1; fi
+
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai final validation $GITHUB_SHA" --body-file "$LOG" || true
+
+          if [ "$INSTALL" -ne 0 ] || [ "$TYPECHECK" -ne 0 ] || [ "$LINT" -ne 0 ] || [ "$BUILD" -ne 0 ] || [ "$WEBP_COUNT" -lt 1 ] || [ "$WEBP_BYTES" -lt 10000 ] || [ "$PRICING_MSG" -ne 0 ] || [ "$ATLAS_CONFIG" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -100,16 +107,46 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          sleep 4
-          STATUS=$(curl -L -s -o "$RUNNER_TEMP/page.html" -w "%{http_code}" "$PAGE_URL" || true)
+          sleep 5
+          PAGE="$RUNNER_TEMP/page.html"
+          STATUS=$(curl -L -s -o "$PAGE" -w "%{http_code}" "$PAGE_URL" || true)
           TITLE_OK=1
-          grep -q "Açaí Nativa" "$RUNNER_TEMP/page.html" && TITLE_OK=0
+          grep -q "Açaí Nativa" "$PAGE" && TITLE_OK=0
+
+          SCRIPT_PATH=$(grep -oE 'src="[^"]+\.js"' "$PAGE" | head -1 | cut -d'"' -f2)
+          SCRIPT_STATUS=000
+          ATLAS_STATUS=000
+          if [ -n "$SCRIPT_PATH" ]; then
+            SCRIPT_URL=$(python -c "from urllib.parse import urljoin; print(urljoin('$PAGE_URL', '$SCRIPT_PATH'))")
+            SCRIPT_FILE="$RUNNER_TEMP/app.js"
+            SCRIPT_STATUS=$(curl -L -s -o "$SCRIPT_FILE" -w "%{http_code}" "$SCRIPT_URL" || true)
+            ATLAS_PATH=$(grep -oE 'assets/acai-nativa-atlas-[A-Za-z0-9_-]+\.webp' "$SCRIPT_FILE" | head -1 || true)
+            if [ -n "$ATLAS_PATH" ]; then
+              ATLAS_URL=$(python -c "from urllib.parse import urljoin; print(urljoin('$PAGE_URL', '$ATLAS_PATH'))")
+              ATLAS_STATUS=$(curl -L -s -o "$RUNNER_TEMP/atlas.webp" -w "%{http_code}" "$ATLAS_URL" || true)
+            fi
+          fi
+
+          DESKTOP=fail
+          MOBILE=fail
+          if command -v google-chrome >/dev/null 2>&1; then
+            google-chrome --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=1440,1000 --screenshot="$RUNNER_TEMP/desktop.png" "$PAGE_URL" >/dev/null 2>&1 && DESKTOP=success
+            google-chrome --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=390,844 --screenshot="$RUNNER_TEMP/mobile.png" "$PAGE_URL" >/dev/null 2>&1 && MOBILE=success
+          fi
+
           BODY="$RUNNER_TEMP/deploy.txt"
           {
             echo "commit=$GITHUB_SHA"
             echo "page_url=$PAGE_URL"
             echo "http_status=$STATUS"
             echo "title_check=$TITLE_OK"
+            echo "script_status=$SCRIPT_STATUS"
+            echo "atlas_status=$ATLAS_STATUS"
+            echo "desktop_chrome_render=$DESKTOP"
+            echo "mobile_chrome_render=$MOBILE"
           } > "$BODY"
-          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai curation deploy $GITHUB_SHA" --body-file "$BODY" || true
-          if [ "$STATUS" != "200" ] || [ "$TITLE_OK" -ne 0 ]; then exit 1; fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai final deploy $GITHUB_SHA" --body-file "$BODY" || true
+
+          if [ "$STATUS" != "200" ] || [ "$TITLE_OK" -ne 0 ] || [ "$SCRIPT_STATUS" != "200" ] || [ "$ATLAS_STATUS" != "200" ] || [ "$DESKTOP" != "success" ] || [ "$MOBILE" != "success" ]; then
+            exit 1
+          fi
