@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
   pages: write
   id-token: write
 
@@ -56,3 +57,27 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Capture mobile rendering
+        shell: bash
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          sleep 5
+          google-chrome --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=390,2600 --screenshot="$RUNNER_TEMP/mobile.png" "$PAGE_URL" >/dev/null 2>&1
+          test -s "$RUNNER_TEMP/mobile.png"
+
+      - name: Upload mobile screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-visual-check
+          path: ${{ runner.temp }}/mobile.png
+          retention-days: 1
+
+      - name: Record visual check run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP image render check $GITHUB_SHA" --body "run_id=$GITHUB_RUN_ID\npage_url=$PAGE_URL\ncommit=$GITHUB_SHA" || true
