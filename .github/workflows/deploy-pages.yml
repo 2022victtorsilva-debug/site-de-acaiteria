@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: Verify install, typecheck, lint and build
+      - name: Verify install, typecheck, lint, images and build
         id: verification
         shell: bash
         env:
@@ -55,11 +55,25 @@ jobs:
             TYPECHECK_CODE=$?
             run_check "npm run lint" npm run lint
             LINT_CODE=$?
+
+            echo "===== image endpoints =====" >> "$LOG"
+            IMAGE_CODE=0
+            IDS=$(grep -oE 'photo\([0-9]+' src/config/acaiConfig.ts | grep -oE '[0-9]+' | sort -u)
+            for id in $IDS; do
+              url="https://images.pexels.com/photos/$id/pexels-photo-$id.jpeg?auto=compress&cs=tinysrgb&w=320&fm=webp"
+              status=$(curl -L -s --retry 2 --max-time 20 -o /dev/null -w "%{http_code}" "$url" || true)
+              echo "$id=$status" >> "$LOG"
+              if [ "$status" != "200" ]; then IMAGE_CODE=1; fi
+            done
+            echo "exit_code=$IMAGE_CODE" >> "$LOG"
+            echo >> "$LOG"
+
             run_check "npm run build" npm run build
             BUILD_CODE=$?
           else
             TYPECHECK_CODE=99
             LINT_CODE=99
+            IMAGE_CODE=99
             BUILD_CODE=99
           fi
 
@@ -69,12 +83,13 @@ jobs:
             echo "install=$INSTALL_CODE"
             echo "typecheck=$TYPECHECK_CODE"
             echo "lint=$LINT_CODE"
+            echo "images=$IMAGE_CODE"
             echo "build=$BUILD_CODE"
           } >> "$LOG"
 
-          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai redesign build $GITHUB_SHA" --body-file "$LOG" || true
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai visual validation $GITHUB_SHA" --body-file "$LOG" || true
 
-          if [ "$INSTALL_CODE" -ne 0 ] || [ "$TYPECHECK_CODE" -ne 0 ] || [ "$LINT_CODE" -ne 0 ] || [ "$BUILD_CODE" -ne 0 ]; then
+          if [ "$INSTALL_CODE" -ne 0 ] || [ "$TYPECHECK_CODE" -ne 0 ] || [ "$LINT_CODE" -ne 0 ] || [ "$IMAGE_CODE" -ne 0 ] || [ "$BUILD_CODE" -ne 0 ]; then
             exit 1
           fi
 
@@ -104,7 +119,7 @@ jobs:
             echo "configure_pages=$SETUP_OUTCOME"
             echo "upload_pages_artifact=$UPLOAD_OUTCOME"
           } > "$BODY"
-          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai redesign pages $GITHUB_SHA" --body-file "$BODY" || true
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai visual pages $GITHUB_SHA" --body-file "$BODY" || true
           if [ "$SETUP_OUTCOME" != "success" ] || [ "$UPLOAD_OUTCOME" != "success" ]; then exit 1; fi
 
   deploy:
@@ -119,7 +134,7 @@ jobs:
         continue-on-error: true
         uses: actions/deploy-pages@v4
 
-      - name: Verify deployment and smoke test
+      - name: Verify deployment and browser render
         if: always()
         shell: bash
         env:
@@ -129,15 +144,23 @@ jobs:
         run: |
           BODY="$RUNNER_TEMP/acai-redesign-deploy.txt"
           STATUS="000"
+          DESKTOP="not-run"
+          MOBILE="not-run"
           if [ "$DEPLOY_OUTCOME" = "success" ] && [ -n "$PAGE_URL" ]; then
             sleep 4
-            STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" "$PAGE_URL" || true)
+            STATUS=$(curl -L -s --retry 2 -o /dev/null -w "%{http_code}" "$PAGE_URL" || true)
+            if command -v google-chrome >/dev/null 2>&1; then
+              google-chrome --headless --no-sandbox --disable-gpu --dump-dom "$PAGE_URL" > "$RUNNER_TEMP/desktop.html" 2>/dev/null && grep -q "Seu açaí" "$RUNNER_TEMP/desktop.html" && DESKTOP="success" || DESKTOP="failure"
+              google-chrome --headless --no-sandbox --disable-gpu --window-size=390,844 --dump-dom "$PAGE_URL" > "$RUNNER_TEMP/mobile.html" 2>/dev/null && grep -q "Seu açaí" "$RUNNER_TEMP/mobile.html" && MOBILE="success" || MOBILE="failure"
+            fi
           fi
           {
             echo "commit=$GITHUB_SHA"
             echo "deploy_pages=$DEPLOY_OUTCOME"
             echo "page_url=$PAGE_URL"
             echo "http_status=$STATUS"
+            echo "desktop_chrome_render=$DESKTOP"
+            echo "mobile_chrome_render=$MOBILE"
           } > "$BODY"
-          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai redesign deploy $GITHUB_SHA" --body-file "$BODY" || true
-          if [ "$DEPLOY_OUTCOME" != "success" ] || [ "$STATUS" != "200" ]; then exit 1; fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai visual deploy $GITHUB_SHA" --body-file "$BODY" || true
+          if [ "$DEPLOY_OUTCOME" != "success" ] || [ "$STATUS" != "200" ] || [ "$DESKTOP" = "failure" ] || [ "$MOBILE" = "failure" ]; then exit 1; fi
