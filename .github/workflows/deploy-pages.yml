@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
   pages: write
   id-token: write
 
@@ -27,97 +26,25 @@ jobs:
         with:
           node-version: 20
 
-      - name: Diagnose install, typecheck, lint and build
-        id: diagnostics
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          LOG="$RUNNER_TEMP/pages-build.log"
-          : > "$LOG"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
 
-          run_check() {
-            label="$1"
-            shift
-            echo "===== $label =====" | tee -a "$LOG"
-            "$@" >> "$LOG" 2>&1
-            code=$?
-            echo "exit_code=$code" | tee -a "$LOG"
-            echo | tee -a "$LOG"
-            return $code
-          }
+      - name: Typecheck
+        run: npm run typecheck
 
-          set +e
-          run_check "npm install" npm install --no-audit --no-fund
-          INSTALL_CODE=$?
+      - name: Lint
+        run: npm run lint
 
-          if [ "$INSTALL_CODE" -eq 0 ]; then
-            run_check "npm run typecheck" npm run typecheck
-            TYPECHECK_CODE=$?
-            run_check "npm run lint" npm run lint
-            LINT_CODE=$?
-            run_check "npm run build" npm run build
-            BUILD_CODE=$?
-          else
-            TYPECHECK_CODE=99
-            LINT_CODE=99
-            BUILD_CODE=99
-          fi
-
-          {
-            echo "===== summary ====="
-            echo "commit=$GITHUB_SHA"
-            echo "node=$(node --version)"
-            echo "npm=$(npm --version)"
-            echo "install=$INSTALL_CODE"
-            echo "typecheck=$TYPECHECK_CODE"
-            echo "lint=$LINT_CODE"
-            echo "build=$BUILD_CODE"
-          } >> "$LOG"
-
-          gh issue create \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "TEMP Pages build diagnostic $GITHUB_SHA" \
-            --body-file "$LOG" || true
-
-          if [ "$INSTALL_CODE" -ne 0 ] || [ "$TYPECHECK_CODE" -ne 0 ] || [ "$LINT_CODE" -ne 0 ] || [ "$BUILD_CODE" -ne 0 ]; then
-            exit 1
-          fi
+      - name: Build
+        run: npm run build
 
       - name: Setup Pages
-        id: setup_pages
-        continue-on-error: true
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
-        id: upload_pages
-        continue-on-error: true
         uses: actions/upload-pages-artifact@v4
         with:
           path: ./dist
-
-      - name: Verify Pages build phase
-        if: always()
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SETUP_OUTCOME: ${{ steps.setup_pages.outcome }}
-          UPLOAD_OUTCOME: ${{ steps.upload_pages.outcome }}
-        run: |
-          BODY="$RUNNER_TEMP/pages-phase.txt"
-          {
-            echo "commit=$GITHUB_SHA"
-            echo "configure_pages=$SETUP_OUTCOME"
-            echo "upload_pages_artifact=$UPLOAD_OUTCOME"
-          } > "$BODY"
-          gh issue create \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "TEMP Pages build phase $GITHUB_SHA" \
-            --body-file "$BODY" || true
-
-          if [ "$SETUP_OUTCOME" != "success" ] || [ "$UPLOAD_OUTCOME" != "success" ]; then
-            exit 1
-          fi
 
   deploy:
     environment:
@@ -128,74 +55,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        continue-on-error: true
         uses: actions/deploy-pages@v4
-
-      - name: Verify Pages deployment and public site
-        if: always()
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEPLOY_OUTCOME: ${{ steps.deployment.outcome }}
-          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: |
-          BODY="$RUNNER_TEMP/pages-deploy.txt"
-          PAGE="$RUNNER_TEMP/page.html"
-          DESKTOP="$RUNNER_TEMP/desktop.html"
-          MOBILE="$RUNNER_TEMP/mobile.html"
-
-          HTTP_STATUS=000
-          if [ "$DEPLOY_OUTCOME" = "success" ] && [ -n "$PAGE_URL" ]; then
-            for attempt in 1 2 3 4 5 6 7 8 9 10; do
-              HTTP_STATUS=$(curl -L -sS -o "$PAGE" -w "%{http_code}" "$PAGE_URL" || true)
-              [ "$HTTP_STATUS" = "200" ] && break
-              sleep 3
-            done
-          fi
-
-          CSS_PATH=""
-          JS_PATH=""
-          CSS_STATUS=000
-          JS_STATUS=000
-          if [ "$HTTP_STATUS" = "200" ]; then
-            CSS_PATH=$(grep -oE 'href="[^"]+\.css"' "$PAGE" | head -1 | cut -d'"' -f2 || true)
-            JS_PATH=$(grep -oE 'src="[^"]+\.js"' "$PAGE" | head -1 | cut -d'"' -f2 || true)
-            ORIGIN=$(printf '%s' "$PAGE_URL" | sed -E 's#(https?://[^/]+).*#\1#')
-            if [ -n "$CSS_PATH" ]; then CSS_STATUS=$(curl -L -sS -o /dev/null -w "%{http_code}" "$ORIGIN$CSS_PATH" || true); fi
-            if [ -n "$JS_PATH" ]; then JS_STATUS=$(curl -L -sS -o /dev/null -w "%{http_code}" "$ORIGIN$JS_PATH" || true); fi
-          fi
-
-          CHROME_STATUS=unavailable
-          MOBILE_STATUS=unavailable
-          if command -v google-chrome >/dev/null 2>&1 && [ "$HTTP_STATUS" = "200" ]; then
-            google-chrome --headless --no-sandbox --disable-gpu --virtual-time-budget=5000 --dump-dom "$PAGE_URL" > "$DESKTOP" 2>/dev/null || true
-            if grep -q "Seu açaí" "$DESKTOP" && grep -q "Monte seu açaí" "$DESKTOP"; then CHROME_STATUS=success; else CHROME_STATUS=failure; fi
-
-            google-chrome --headless --no-sandbox --disable-gpu --window-size=390,844 --virtual-time-budget=5000 --dump-dom "$PAGE_URL" > "$MOBILE" 2>/dev/null || true
-            if grep -q "Seu açaí" "$MOBILE" && grep -q "Monte seu açaí" "$MOBILE"; then MOBILE_STATUS=success; else MOBILE_STATUS=failure; fi
-          fi
-
-          {
-            echo "commit=$GITHUB_SHA"
-            echo "deploy_pages=$DEPLOY_OUTCOME"
-            echo "page_url=$PAGE_URL"
-            echo "http_status=$HTTP_STATUS"
-            echo "css_path=$CSS_PATH"
-            echo "css_status=$CSS_STATUS"
-            echo "js_path=$JS_PATH"
-            echo "js_status=$JS_STATUS"
-            echo "desktop_chrome_render=$CHROME_STATUS"
-            echo "mobile_chrome_render=$MOBILE_STATUS"
-          } > "$BODY"
-
-          gh issue create \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "TEMP Pages smoke test $GITHUB_SHA" \
-            --body-file "$BODY" || true
-
-          if [ "$DEPLOY_OUTCOME" != "success" ] || [ "$HTTP_STATUS" != "200" ] || [ "$CSS_STATUS" != "200" ] || [ "$JS_STATUS" != "200" ]; then
-            exit 1
-          fi
-          if [ "$CHROME_STATUS" = "failure" ] || [ "$MOBILE_STATUS" = "failure" ]; then
-            exit 1
-          fi
