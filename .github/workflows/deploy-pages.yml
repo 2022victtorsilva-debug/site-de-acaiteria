@@ -81,12 +81,39 @@ jobs:
           fi
 
       - name: Setup Pages
+        id: setup_pages
+        continue-on-error: true
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
+        id: upload_pages
+        continue-on-error: true
         uses: actions/upload-pages-artifact@v4
         with:
           path: ./dist
+
+      - name: Verify Pages build phase
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SETUP_OUTCOME: ${{ steps.setup_pages.outcome }}
+          UPLOAD_OUTCOME: ${{ steps.upload_pages.outcome }}
+        run: |
+          BODY="$RUNNER_TEMP/pages-phase.txt"
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "configure_pages=$SETUP_OUTCOME"
+            echo "upload_pages_artifact=$UPLOAD_OUTCOME"
+          } > "$BODY"
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "TEMP Pages build phase $GITHUB_SHA" \
+            --body-file "$BODY" || true
+
+          if [ "$SETUP_OUTCOME" != "success" ] || [ "$UPLOAD_OUTCOME" != "success" ]; then
+            exit 1
+          fi
 
   deploy:
     environment:
@@ -97,4 +124,28 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
+
+      - name: Verify Pages deployment
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_OUTCOME: ${{ steps.deployment.outcome }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          BODY="$RUNNER_TEMP/pages-deploy.txt"
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "deploy_pages=$DEPLOY_OUTCOME"
+            echo "page_url=$PAGE_URL"
+          } > "$BODY"
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "TEMP Pages deploy phase $GITHUB_SHA" \
+            --body-file "$BODY" || true
+
+          if [ "$DEPLOY_OUTCOME" != "success" ]; then
+            exit 1
+          fi
