@@ -64,7 +64,7 @@ jobs:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           sleep 5
-          google-chrome --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=390,2600 --screenshot="$RUNNER_TEMP/mobile.png" "$PAGE_URL" >/dev/null 2>&1
+          google-chrome --headless --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=4500 --window-size=390,4200 --screenshot="$RUNNER_TEMP/mobile.png" "$PAGE_URL" >/dev/null 2>&1
           test -s "$RUNNER_TEMP/mobile.png"
 
       - name: Upload mobile screenshot
