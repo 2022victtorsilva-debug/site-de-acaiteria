@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
   pages: write
   id-token: write
 
@@ -57,49 +56,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Validate published page and image endpoints
-        shell: bash
-        env:
-          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: |
-          sleep 8
-          curl --fail --silent --show-error --location "$PAGE_URL" -o /dev/null
-          for url in \
-            "https://images.pexels.com/photos/5232939/pexels-photo-5232939.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=1600" \
-            "https://images.pexels.com/photos/5150303/pexels-photo-5150303.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=960" \
-            "https://images.pexels.com/photos/29173451/pexels-photo-29173451.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=960" \
-            "https://images.pexels.com/photos/17597421/pexels-photo-17597421.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=960" \
-            "https://images.pexels.com/photos/12273052/pexels-photo-12273052.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=960" \
-            "https://images.pexels.com/photos/6637835/pexels-photo-6637835.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=960" \
-            "https://images.pexels.com/photos/8230020/pexels-photo-8230020.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=1280" \
-            "https://images.pexels.com/photos/4099236/pexels-photo-4099236.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=1280" \
-            "https://images.pexels.com/photos/4099233/pexels-photo-4099233.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=1280" \
-            "https://images.pexels.com/photos/4099234/pexels-photo-4099234.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=1280" \
-            "https://images.pexels.com/photos/6684773/pexels-photo-6684773.jpeg?auto=compress&cs=tinysrgb&fm=webp&w=1280"
-          do
-            curl --fail --silent --show-error --location "$url" -o /dev/null
-          done
-
-      - name: Capture mobile quality check
-        shell: bash
-        env:
-          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: |
-          google-chrome --headless --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=6000 --window-size=390,5200 --screenshot="$RUNNER_TEMP/mobile.png" "$PAGE_URL" >/dev/null 2>&1
-          test -s "$RUNNER_TEMP/mobile.png"
-
-      - name: Upload mobile screenshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-quality-check
-          path: ${{ runner.temp }}/mobile.png
-          retention-days: 1
-
-      - name: Record validation run
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
-        run: |
-          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP image quality check $GITHUB_SHA" --body "run_id=$GITHUB_RUN_ID\npage_url=$PAGE_URL\ncommit=$GITHUB_SHA" || true
