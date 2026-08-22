@@ -28,16 +28,25 @@ function SafeLink({ href, children, className = '' }: { href: string | null; chi
   return <button className={className} onClick={() => { setHint(true); setTimeout(() => setHint(false), 2000) }}>{children}{hint && <span className="hint">Contato será configurado para o cliente</span>}</button>
 }
 
-function Photo({ src, alt, className = '', eager = false }: { src: string; alt: string; className?: string; eager?: boolean }) {
-  return <img className={className} src={src} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+const pexelsUrl = (src: string, width: number) => {
+  if (!src.includes('images.pexels.com')) return src
+  const separator = src.includes('?') ? '&' : '?'
+  return `${src}${separator}auto=compress&cs=tinysrgb&fm=webp&w=${width}`
 }
 
-function SpritePhoto({ tile, alt, className = '' }: { tile: number; alt: string; className?: string }) {
-  const col = tile % 5
-  const row = Math.floor(tile / 5)
-  const x = `${col * 25}%`
-  const y = `${row * (100 / 3)}%`
-  return <span role="img" aria-label={alt} className={`sprite-photo ${className}`} style={{ backgroundImage: `url(${acaiConfig.visual.atlas})`, backgroundPosition: `${x} ${y}` }} />
+function Photo({ src, alt, className = '', eager = false, sizes = '100vw' }: { src: string; alt: string; className?: string; eager?: boolean; sizes?: string }) {
+  const responsive = src.includes('images.pexels.com')
+  const srcSet = responsive ? [640, 960, 1280, 1600, 1920].map(width => `${pexelsUrl(src, width)} ${width}w`).join(', ') : undefined
+  return <img
+    className={className}
+    src={responsive ? pexelsUrl(src, eager ? 1600 : 1280) : src}
+    srcSet={srcSet}
+    sizes={responsive ? sizes : undefined}
+    alt={alt}
+    loading={eager ? 'eager' : 'lazy'}
+    fetchPriority={eager ? 'high' : 'auto'}
+    decoding="async"
+  />
 }
 
 function Intro() {
@@ -107,21 +116,21 @@ function App() {
           <div className="actions"><a className="btn yellow" href="#monte">Montar meu açaí <ArrowRight size={18}/></a><SafeLink href={generic} className="btn light"><MessageCircle size={18}/> Fazer pedido</SafeLink></div>
           <div className="notes"><span><Leaf/> Frutas frescas</span><span><Sparkles/> Várias combinações</span><span><Zap/> Pedido rápido</span></div>
         </div>
-        <div className="hero-photo-wrap"><Photo src={acaiConfig.visual.hero} alt="Açaí cremoso com frutas frescas em fotografia gastronômica" className="hero-photo" eager/><span className="hero-glow"/></div>
+        <div className="hero-photo-wrap"><Photo src={acaiConfig.visual.hero} alt="Açaí cremoso com frutas frescas em fotografia gastronômica" className="hero-photo" eager sizes="(max-width: 760px) 100vw, 52vw"/><span className="hero-glow"/></div>
       </section>
 
       <section className="section featured-section" id="cardapio">
         <Title over="favoritos da casa" title="Comece por um Nativa." text="Combinações prontas para quando você quer escolher rápido e acertar."/>
         <div className="products">{acaiConfig.featuredProducts.map((product, index) => <article key={product.name}>
-          <div className={`product-media ${index === 2 ? 'crocante' : ''}`}><SpritePhoto tile={product.tile} alt={`${product.name}: ${product.description}`} className={`product-photo-${index}`}/></div>
+          <div className={`product-media ${index === 2 ? 'crocante' : ''}`}><Photo src={product.image} alt={`${product.name}: ${product.description}`} className={`product-photo product-photo-${index}`} sizes="(max-width: 480px) 100vw, (max-width: 760px) 50vw, 25vw"/></div>
           <div className="product-copy"><h3>{product.name}</h3><p>{product.description}</p><div className="product-bottom"><strong>{money(product.price)}</strong><SafeLink href={wa(`Olá! Quero pedir um ${product.name}.`)} className="icon"><MessageCircle size={18}/><span className="sr-only">Pedir {product.name}</span></SafeLink></div></div>
         </article>)}</div>
       </section>
 
       <section className="sizes"><div className="section sizes-inner">
         <div className="sizes-copy"><span className="eyebrow">do pequeno ao caprichado</span><h2>Escolha o tamanho ideal.</h2><p>Quatro copos da mesma linha Nativa, apresentados em proporção crescente para comparar de verdade.</p></div>
-        <div className="size-grid">{acaiConfig.sizes.map(item => <article className={item.featured ? 'featured-size' : ''} key={item.id}>
-          <div className="size-stage"><SpritePhoto tile={item.tile} alt={`Copo Açaí Nativa de ${item.label}`} /></div>
+        <div className="size-grid">{acaiConfig.sizes.map(item => <article className={`${item.featured ? 'featured-size ' : ''}size-${item.id}`} key={item.id}>
+          <div className="size-stage"><Photo src={acaiConfig.visual.sizeImage} alt={`Copo de açaí representando ${item.label}`} className="size-photo" sizes="(max-width: 760px) 46vw, 18vw"/></div>
           {item.featured ? <span className="popular">Mais pedido</span> : <span className="popular placeholder" aria-hidden="true">&nbsp;</span>}
           <b>{item.label}</b><strong>{money(item.price)}</strong>
         </article>)}</div>
@@ -153,17 +162,17 @@ function App() {
         ['Coberturas', acaiConfig.toppings.map(item => item.name)],
       ].map((group, index) => <article key={group[0] as string}><span>0{index + 1}</span><h3>{group[0] as string}</h3>{(group[1] as readonly string[]).map(item => <p key={item}>{item}</p>)}</article>)}</div></div></section>
 
-      <section className="section specials-section"><Title over="combinações especiais" title="Quando a gente monta por você."/><div className="specials">{acaiConfig.specials.map((product, index) => <article key={product.name}><span>0{index + 1}</span><SpritePhoto tile={product.tile} alt={`${product.name}: ${product.description}`} className="special-photo"/><div className="special-copy"><h3>{product.name}</h3><p>{product.description}</p><div><strong>{money(product.price)}</strong><SafeLink href={wa(`Olá! Quero pedir um ${product.name}.`)} className="link">pedir <ArrowRight size={16}/></SafeLink></div></div></article>)}</div></section>
+      <section className="section specials-section"><Title over="combinações especiais" title="Quando a gente monta por você."/><div className="specials">{acaiConfig.specials.map((product, index) => <article key={product.name}><span>0{index + 1}</span><Photo src={product.image} alt={`${product.name}: ${product.description}`} className="special-photo" sizes="(max-width: 760px) 100vw, 33vw"/><div className="special-copy"><h3>{product.name}</h3><p>{product.description}</p><div><strong>{money(product.price)}</strong><SafeLink href={wa(`Olá! Quero pedir um ${product.name}.`)} className="link">pedir <ArrowRight size={16}/></SafeLink></div></div></article>)}</div></section>
 
-      <section className="power"><div><span className="eyebrow pale">linha power</span><h2>Energia para o seu ritmo.</h2><p>Banana, pasta de amendoim, granola e mix proteico em uma combinação prática e cheia de textura.</p><SafeLink href={wa('Olá! Quero saber mais sobre a opção Nativa Power.')} className="btn yellow">Quero experimentar <ArrowRight size={18}/></SafeLink></div><SpritePhoto tile={acaiConfig.visual.powerTile} alt="Nativa Power com banana, frutas, granola e complemento proteico" className="power-photo"/></section>
+      <section className="power"><div><span className="eyebrow pale">linha power</span><h2>Energia para o seu ritmo.</h2><p>Banana, pasta de amendoim, granola e mix proteico em uma combinação prática e cheia de textura.</p><SafeLink href={wa('Olá! Quero saber mais sobre a opção Nativa Power.')} className="btn yellow">Quero experimentar <ArrowRight size={18}/></SafeLink></div><Photo src={acaiConfig.visual.power} alt="Nativa Power com banana, frutas, granola e complemento proteico" className="power-photo" sizes="(max-width: 760px) 100vw, 48vw"/></section>
 
-      <section className="section" id="combos"><Title over="para dividir — ou não" title="Combos que resolvem."/><div className="combos">{acaiConfig.combos.map(combo => <article key={combo.name}><SpritePhoto tile={combo.tile} alt={`${combo.name}: ${combo.description}`} className="combo-photo"/><div className="combo-copy"><h3>{combo.name}</h3><p>{combo.description}</p><div><strong>{money(combo.price)}</strong><SafeLink href={wa(`Olá! Quero pedir o ${combo.name}.`)} className="btn yellow small">Pedir combo</SafeLink></div></div></article>)}</div></section>
+      <section className="section" id="combos"><Title over="para dividir — ou não" title="Combos que resolvem."/><div className="combos">{acaiConfig.combos.map(combo => <article key={combo.name}><Photo src={combo.image} alt={`${combo.name}: ${combo.description}`} className="combo-photo" sizes="(max-width: 760px) 100vw, 33vw"/><div className="combo-copy"><h3>{combo.name}</h3><p>{combo.description}</p><div><strong>{money(combo.price)}</strong><SafeLink href={wa(`Olá! Quero pedir o ${combo.name}.`)} className="btn yellow small">Pedir combo</SafeLink></div></div></article>)}</div></section>
 
-      <section className="gallery"><div className="section"><Title over="dá vontade só de olhar" title="Colorido de verdade."/><div className="gallery-grid">{acaiConfig.visual.gallery.map((photo, index) => <figure className={`gallery-item g${index + 1}`} key={photo.tile}><SpritePhoto tile={photo.tile} alt={photo.alt}/></figure>)}<div className="social"><Instagram/><h3>Açaí que também dá vontade no feed.</h3><SafeLink href={insta()} className="link">Ver no Instagram <ArrowRight size={16}/></SafeLink></div></div></div></section>
+      <section className="gallery"><div className="section"><Title over="dá vontade só de olhar" title="Colorido de verdade."/><div className="gallery-grid">{acaiConfig.visual.gallery.map((photo, index) => <figure className={`gallery-item g${index + 1}`} key={photo.image}><Photo src={photo.image} alt={photo.alt} className="gallery-photo" sizes="(max-width: 480px) 100vw, (max-width: 1020px) 50vw, 34vw"/></figure>)}<div className="social"><Instagram/><h3>Açaí que também dá vontade no feed.</h3><SafeLink href={insta()} className="link">Ver no Instagram <ArrowRight size={16}/></SafeLink></div></div></div></section>
 
       <section className="section"><Title over="o que faz diferença" title="Simples, fresco, rápido."/><div className="features">{[['01', 'Ingredientes selecionados'], ['02', 'Frutas frescas'], ['03', 'Do seu jeito'], ['04', 'Pedido direto']].map(item => <article key={item[0]}><b>{item[0]}</b><h3>{item[1]}</h3><p>Uma experiência pensada para ser bonita, prática e fácil de pedir.</p></article>)}</div></section>
 
-      <section className="delivery"><div><span className="eyebrow pale">delivery</span><h2>Seu açaí chega até você.</h2><p>Escolha seu favorito, monte do seu jeito e finalize o contato pelo canal preferido.</p><div className="actions"><SafeLink href={generic} className="btn yellow"><MessageCircle size={18}/> Pedir pelo WhatsApp</SafeLink><SafeLink href={acaiConfig.links.menuUrl || null} className="btn outline">Abrir cardápio online</SafeLink></div></div><div className="delivery-photo-wrap"><SpritePhoto tile={acaiConfig.visual.deliveryTile} alt="Bolsa de delivery Açaí Nativa com copos da marca" className="delivery-photo"/></div></section>
+      <section className="delivery"><div><span className="eyebrow pale">delivery</span><h2>Seu açaí chega até você.</h2><p>Escolha seu favorito, monte do seu jeito e finalize o contato pelo canal preferido.</p><div className="actions"><SafeLink href={generic} className="btn yellow"><MessageCircle size={18}/> Pedir pelo WhatsApp</SafeLink><SafeLink href={acaiConfig.links.menuUrl || null} className="btn outline">Abrir cardápio online</SafeLink></div></div><div className="delivery-photo-wrap"><Photo src={acaiConfig.visual.delivery} alt="Pedido sendo entregue em embalagem de delivery" className="delivery-photo" sizes="(max-width: 760px) 100vw, 48vw"/></div></section>
 
       <section className="section location" id="localizacao"><div className="location-card"><div className="map"><MapPin/><span>Localização pronta para configurar</span></div><div><span className="eyebrow">onde encontrar</span><h2>Açaí Nativa</h2><p>{acaiConfig.location.address || 'Endereço será inserido aqui quando o site for adaptado para o cliente.'}</p><p><b>{[acaiConfig.location.city, acaiConfig.location.state].filter(Boolean).join(' • ') || 'Cidade e estado a definir'}</b></p><SafeLink href={acaiConfig.location.mapsUrl || null} className="btn dark"><MapPin size={18}/> Como chegar</SafeLink></div></div><div className="hours"><Clock3/><h3>Horários</h3>{acaiConfig.openingHours.map(item => <p key={item.label}><span>{item.label}</span><b>{item.value}</b></p>)}</div></section>
 
