@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
   pages: write
   id-token: write
 
@@ -26,17 +27,53 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
+      - name: Verify project
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LOG="$RUNNER_TEMP/acai-curation.log"
+          : > "$LOG"
+          run_check() {
+            label="$1"; shift
+            echo "===== $label =====" | tee -a "$LOG"
+            "$@" >> "$LOG" 2>&1
+            code=$?
+            echo "exit_code=$code" | tee -a "$LOG"
+            echo >> "$LOG"
+            return $code
+          }
+          set +e
+          run_check "npm install" npm install --no-audit --no-fund; INSTALL=$?
+          if [ "$INSTALL" -eq 0 ]; then
+            run_check "typecheck" npm run typecheck; TYPECHECK=$?
+            run_check "lint" npm run lint; LINT=$?
+            run_check "build" npm run build; BUILD=$?
+          else
+            TYPECHECK=99; LINT=99; BUILD=99
+          fi
+          if [ "$BUILD" -eq 0 ]; then
+            WEBP_COUNT=$(find dist -type f -name '*.webp' | wc -l)
+            WEBP_BYTES=$(find dist -type f -name '*.webp' -printf '%s\n' | awk '{s+=$1} END {print s+0}')
+            grep -q "Total calculado no site" src/main.tsx; PRICING_MSG=$?
+            grep -q "acai-nativa-atlas.webp" src/config/acaiConfig.ts; ATLAS_CONFIG=$?
+          else
+            WEBP_COUNT=0; WEBP_BYTES=0; PRICING_MSG=99; ATLAS_CONFIG=99
+          fi
+          {
+            echo "===== validation ====="
+            echo "commit=$GITHUB_SHA"
+            echo "install=$INSTALL"
+            echo "typecheck=$TYPECHECK"
+            echo "lint=$LINT"
+            echo "build=$BUILD"
+            echo "webp_count=$WEBP_COUNT"
+            echo "webp_bytes=$WEBP_BYTES"
+            echo "pricing_message=$PRICING_MSG"
+            echo "atlas_config=$ATLAS_CONFIG"
+          } >> "$LOG"
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai curation validation $GITHUB_SHA" --body-file "$LOG" || true
+          if [ "$INSTALL" -ne 0 ] || [ "$TYPECHECK" -ne 0 ] || [ "$LINT" -ne 0 ] || [ "$BUILD" -ne 0 ] || [ "$WEBP_COUNT" -lt 1 ] || [ "$WEBP_BYTES" -lt 50000 ] || [ "$PRICING_MSG" -ne 0 ] || [ "$ATLAS_CONFIG" -ne 0 ]; then exit 1; fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -56,3 +93,23 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify published site
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          sleep 4
+          STATUS=$(curl -L -s -o "$RUNNER_TEMP/page.html" -w "%{http_code}" "$PAGE_URL" || true)
+          TITLE_OK=1
+          grep -q "Açaí Nativa" "$RUNNER_TEMP/page.html" && TITLE_OK=0
+          BODY="$RUNNER_TEMP/deploy.txt"
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "page_url=$PAGE_URL"
+            echo "http_status=$STATUS"
+            echo "title_check=$TITLE_OK"
+          } > "$BODY"
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP Acai curation deploy $GITHUB_SHA" --body-file "$BODY" || true
+          if [ "$STATUS" != "200" ] || [ "$TITLE_OK" -ne 0 ]; then exit 1; fi
