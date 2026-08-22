@@ -81,3 +81,5 @@ jobs:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           gh issue create --repo "$GITHUB_REPOSITORY" --title "TEMP image render check $GITHUB_SHA" --body "run_id=$GITHUB_RUN_ID\npage_url=$PAGE_URL\ncommit=$GITHUB_SHA" || true
+
+# validation: corrected curated atlas
