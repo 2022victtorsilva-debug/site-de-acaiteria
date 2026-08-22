@@ -1,4 +1,4 @@
-import atlasUrl from '../assets/acai-nativa-atlas.webp'
+import atlasUrl from '../assets/acai-nativa-atlas.jpg'
 
 export const acaiConfig = {
   brand: { name: 'Açaí Nativa', tagline: 'Seu açaí. Seu momento. Seu jeito.' },
