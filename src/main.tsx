@@ -4,37 +4,134 @@ import { ArrowRight, Check, ChevronDown, Clock3, Instagram, Leaf, MapPin, Menu, 
 import { acaiConfig } from './config/acaiConfig'
 import './styles.css'
 
-const money=(v:number)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
-const wa=(message:string)=>{const phone=acaiConfig.contact.whatsapp.replace(/\D/g,'');return phone?`https://wa.me/${phone}?text=${encodeURIComponent(message)}`:null}
-const insta=()=>{const v=acaiConfig.contact.instagram.trim();return !v?null:v.startsWith('http')?v:`https://instagram.com/${v.replace(/^@/,'')}`}
-
-function SafeLink({href,children,className=''}:{href:string|null,children:React.ReactNode,className?:string}){const[hint,setHint]=useState(false);if(href)return <a href={href} className={className} target="_blank" rel="noreferrer">{children}</a>;return <button className={className} onClick={()=>{setHint(true);setTimeout(()=>setHint(false),2000)}}>{children}{hint&&<span className="hint">Contato será configurado para o cliente</span>}</button>}
-function Bowl({large=false}:{large?:boolean}){return <div className={`bowl-scene ${large?'large':''}`}><div className="cup"><div className="top"><i className="straw"/><i className="banana"/><i className="kiwi"/><i className="granola"/></div><b>NATIVA</b></div></div>}
-function Intro(){const[on,setOn]=useState(true);useEffect(()=>{const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;const id=setTimeout(()=>setOn(false),reduced?400:2100);return()=>clearTimeout(id)},[]);return on?<div className="intro"><div className="orb o1"/><div className="orb o2"/><div className="intro-brand"><span>●</span><strong>AÇAÍ NATIVA</strong><small>Seu açaí. Seu momento. Seu jeito.</small></div></div>:null}
-
-function App(){
- const[menu,setMenu]=useState(false),[size,setSize]=useState('500'),[base,setBase]=useState('Açaí tradicional');const[fruits,setFruits]=useState<string[]>(['Banana']),[comps,setComps]=useState<string[]>(['Granola']),[tops,setTops]=useState<string[]>([])
- const toggle=(list:string[],set:(v:string[])=>void,v:string)=>set(list.includes(v)?list.filter(x=>x!==v):[...list,v]);const chosen=acaiConfig.sizes.find(s=>s.id===size)??acaiConfig.sizes[0]
- const msg=useMemo(()=>`Olá! Vim pelo site da ${acaiConfig.brand.name} e gostaria de pedir:\n\nTamanho: ${chosen.label}\nBase: ${base}\nFrutas: ${fruits.join(', ')||'Nenhuma'}\nComplementos: ${comps.join(', ')||'Nenhum'}\nCobertura: ${tops.join(', ')||'Nenhuma'}`,[chosen,base,fruits,comps,tops]);const generic=wa(`Olá! Vim pelo site da ${acaiConfig.brand.name} e gostaria de fazer um pedido.`)
- const nav=[['Início','inicio'],['Monte o seu','monte'],['Cardápio','cardapio'],['Combos','combos'],['Localização','localizacao'],['Contato','contato']]
- return <><Intro/><header><a className="logo" href="#inicio"><span>●</span><b>AÇAÍ<br/>NATIVA</b></a><nav className={menu?'open':''}>{nav.map(n=><a key={n[0]} href={`#${n[1]}`} onClick={()=>setMenu(false)}>{n[0]}</a>)}</nav><div className="header-actions"><SafeLink href={generic} className="btn yellow small"><span>Pedir agora</span><MessageCircle size={18}/></SafeLink><button className="menu" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div></header>
- <main>
- <section className="hero" id="inicio"><div><span className="eyebrow"><Sparkles size={15}/> do seu jeito, sem complicação</span><h1>Seu açaí,<br/><em>do seu jeito.</em></h1><p>Cremoso, gelado e cheio de combinações pra deixar cada pedido único.</p><div className="actions"><a className="btn yellow" href="#monte">Montar meu açaí <ArrowRight size={18}/></a><SafeLink href={generic} className="btn light"><MessageCircle size={18}/> Fazer pedido</SafeLink></div><div className="notes"><span><Leaf/> Frutas frescas</span><span><Sparkles/> Várias combinações</span><span><Zap/> Pedido rápido</span></div></div><div className="hero-art"><div className="blob"/><Bowl large/><i className="tag t1">feito na hora</i><i className="tag t2">+ combinações</i></div></section>
- <section className="section" id="cardapio"><Title over="favoritos da casa" title="Comece por um Nativa." text="Combinações prontas para quando você quer escolher rápido e acertar."/><div className="products">{acaiConfig.featuredProducts.map((p,i)=><article key={p.name} className={i===1?'lift':''}><Bowl/><h3>{p.name}</h3><p>{p.description}</p><div><strong>{money(p.price)}</strong><SafeLink href={wa(`Olá! Quero pedir um ${p.name}.`)} className="icon"><MessageCircle size={18}/></SafeLink></div></article>)}</div></section>
- <section className="sizes"><div className="section sizes-inner"><div><span className="eyebrow">do pequeno ao caprichado</span><h2>Escolha o tamanho ideal.</h2><p>Quatro tamanhos, a mesma base cremosa e espaço para criar sua combinação.</p></div><div className="size-grid">{acaiConfig.sizes.map((s,i)=><div key={s.id}><div className="mini" style={{height:60+i*14}}/><small>{s.featured?'mais pedido':''}</small><b>{s.label}</b><strong>{money(s.price)}</strong></div>)}</div></div></section>
- <section className="section builder" id="monte"><Title over="uma experiência simples" title="Monte seu açaí." text="Escolha cada camada. No final, o site prepara a mensagem do pedido para o WhatsApp."/><div className="builder-grid"><div className="builder-box"><Group title="1. Escolha o tamanho">{acaiConfig.sizes.map(s=><button className={size===s.id?'chip active':'chip'} onClick={()=>setSize(s.id)} key={s.id}><b>{s.label}</b><small>{money(s.price)}</small></button>)}</Group><Group title="2. Escolha a base">{acaiConfig.bases.map(x=><button className={base===x?'chip active':'chip'} onClick={()=>setBase(x)} key={x}>{base===x&&<Check size={14}/>} {x}</button>)}</Group><Group title="3. Escolha frutas">{acaiConfig.fruits.map(x=><button className={fruits.includes(x)?'chip active':'chip'} onClick={()=>toggle(fruits,setFruits,x)} key={x}>{fruits.includes(x)&&<Check size={14}/>} {x}</button>)}</Group><Group title="4. Complementos">{acaiConfig.complements.map(x=><button className={comps.includes(x)?'chip active':'chip'} onClick={()=>toggle(comps,setComps,x)} key={x}>{comps.includes(x)&&<Check size={14}/>} {x}</button>)}</Group><Group title="5. Coberturas">{acaiConfig.toppings.map(x=><button className={tops.includes(x)?'chip active':'chip'} onClick={()=>toggle(tops,setTops,x)} key={x}>{tops.includes(x)&&<Check size={14}/>} {x}</button>)}</Group></div><aside><span className="eyebrow pale">seu pedido</span><h3>{chosen.label} Nativa</h3><p><b>Base</b>{base}</p><p><b>Frutas</b>{fruits.join(', ')||'—'}</p><p><b>Complementos</b>{comps.join(', ')||'—'}</p><p><b>Cobertura</b>{tops.join(', ')||'—'}</p><strong>a partir de {money(chosen.price)}</strong><SafeLink href={wa(msg)} className="btn whatsapp"><MessageCircle size={19}/> Pedir pelo WhatsApp</SafeLink></aside></div></section>
- <section className="ingredients"><div className="section"><Title over="mais textura, mais sabor" title="Do fresco ao crocante."/><div className="ingredient-grid">{[['Frutas',acaiConfig.fruits],['Cremes',['Leite em pó','Creme de avelã','Creme branco','Creme de morango']],['Crocantes',['Granola','Paçoca','Amendoim','Cereal']],['Coberturas',acaiConfig.toppings]].map((g,i)=><article key={g[0] as string}><span>0{i+1}</span><h3>{g[0] as string}</h3>{(g[1] as readonly string[]).map(x=><p key={x}>{x}</p>)}</article>)}</div></div></section>
- <section className="section"><Title over="combinações especiais" title="Quando a gente monta por você."/><div className="specials">{acaiConfig.specials.map((p,i)=><article key={p.name}><span>0{i+1}</span><Bowl/><h3>{p.name}</h3><p>{p.description}</p><div><strong>{money(p.price)}</strong><SafeLink href={wa(`Olá! Quero pedir um ${p.name}.`)} className="link">pedir <ArrowRight size={16}/></SafeLink></div></article>)}</div></section>
- <section className="power"><div><span className="eyebrow pale">linha power</span><h2>Energia para o seu ritmo.</h2><p>Banana, pasta de amendoim, granola e mix proteico em uma combinação prática e cheia de textura.</p><SafeLink href={wa('Olá! Quero saber mais sobre a opção Nativa Power.')} className="btn yellow">Quero experimentar <ArrowRight size={18}/></SafeLink></div><Bowl large/></section>
- <section className="section" id="combos"><Title over="para dividir — ou não" title="Combos que resolvem."/><div className="combos">{acaiConfig.combos.map((c,i)=><article key={c.name} className={i===2?'featured':''}><span>0{i+1}</span><h3>{c.name}</h3><p>{c.description}</p><strong>{money(c.price)}</strong><SafeLink href={wa(`Olá! Quero pedir o ${c.name}.`)} className="btn light small">Pedir combo</SafeLink></article>)}</div></section>
- <section className="gallery"><div className="section"><Title over="dá vontade só de olhar" title="Colorido de verdade."/><div className="gallery-grid"><div className="big"><Bowl large/><b>açaí + morango</b></div><div><Bowl/><b>camadas frescas</b></div><div className="fruits"><i/><i/><i/><i/><b>toppings à vontade</b></div><div><Bowl/><b>do balcão pra você</b></div><div className="social"><Instagram/><h3>Açaí que também dá vontade no feed.</h3><SafeLink href={insta()} className="link">Ver no Instagram <ArrowRight size={16}/></SafeLink></div></div></div></section>
- <section className="section"><Title over="o que faz diferença" title="Simples, fresco, rápido."/><div className="features">{[['01','Ingredientes selecionados'],['02','Frutas frescas'],['03','Do seu jeito'],['04','Pedido direto']].map(x=><article key={x[0]}><b>{x[0]}</b><h3>{x[1]}</h3><p>Uma experiência pensada para ser bonita, prática e fácil de pedir.</p></article>)}</div></section>
- <section className="delivery"><div><span className="eyebrow pale">delivery</span><h2>Seu açaí chega até você.</h2><p>Escolha seu favorito, monte do seu jeito e finalize o contato pelo canal preferido.</p><div className="actions"><SafeLink href={generic} className="btn yellow"><MessageCircle size={18}/> Pedir pelo WhatsApp</SafeLink><SafeLink href={acaiConfig.links.menuUrl||null} className="btn outline">Abrir cardápio online</SafeLink></div></div><div className="phone"><Bowl/><b>Pedido rápido</b><small>Escolha → monte → envie</small></div></section>
- <section className="section location" id="localizacao"><div className="location-card"><div className="map"><MapPin/><span>Localização pronta para configurar</span></div><div><span className="eyebrow">onde encontrar</span><h2>Açaí Nativa</h2><p>{acaiConfig.location.address||'Endereço será inserido aqui quando o site for adaptado para o cliente.'}</p><p><b>{[acaiConfig.location.city,acaiConfig.location.state].filter(Boolean).join(' • ')||'Cidade e estado a definir'}</b></p><SafeLink href={acaiConfig.location.mapsUrl||null} className="btn dark"><MapPin size={18}/> Como chegar</SafeLink></div></div><div className="hours"><Clock3/><h3>Horários</h3>{acaiConfig.openingHours.map(h=><p key={h.label}><span>{h.label}</span><b>{h.value}</b></p>)}</div></section>
- <section className="section faq"><Title over="perguntas rápidas" title="Antes da primeira colherada."/>{[['Como faço um pedido?','Use um dos botões de pedido. Com o WhatsApp configurado, a conversa abre com uma mensagem pronta.'],['Posso montar meu próprio açaí?','Sim. A seção Monte seu açaí permite escolher tamanho, base, frutas, complementos e cobertura.'],['Quais tamanhos existem?','300 ml, 400 ml, 500 ml e 700 ml, todos editáveis na configuração.'],['Vocês fazem delivery?','O site está preparado para direcionar o pedido ao canal configurado.'],['Onde fica a loja?','A localização real será inserida na configuração do cliente.'],['Como falar pelo WhatsApp?','Ao inserir um número real em acaiConfig, todos os botões passam a funcionar automaticamente.']].map(([q,a])=><details key={q}><summary>{q}<ChevronDown/></summary><p>{a}</p></details>)}</section>
- <section className="cta" id="contato"><span className="eyebrow pale">seu próximo favorito</span><h2>Já escolheu?</h2><p>Monte seu açaí e peça do seu jeito.</p><SafeLink href={generic} className="btn yellow">Fazer pedido <ArrowRight size={18}/></SafeLink></section>
- </main><footer><div className="brand"><a className="logo" href="#inicio"><span>●</span><b>AÇAÍ<br/>NATIVA</b></a><p>{acaiConfig.brand.tagline}</p></div><div><b>Navegação</b><a href="#monte">Monte o seu</a><a href="#cardapio">Cardápio</a><a href="#combos">Combos</a></div><div><b>Contato</b><SafeLink href={generic}>WhatsApp</SafeLink><SafeLink href={insta()}>Instagram</SafeLink><a href="#localizacao">Localização</a></div><div><b>Horários</b>{acaiConfig.openingHours.map(h=><span key={h.label}>{h.label}: {h.value}</span>)}</div><small>Desenvolvido por <strong>Yuukri</strong></small></footer><SafeLink href={generic} className="float-wa"><MessageCircle/></SafeLink></>
+const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const wa = (message: string) => {
+  const phone = acaiConfig.contact.whatsapp.replace(/\D/g, '')
+  return phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : null
 }
-function Title({over,title,text}:{over:string,title:string,text?:string}){return <div className="title"><span className="eyebrow">{over}</span><h2>{title}</h2>{text&&<p>{text}</p>}</div>}
-function Group({title,children}:{title:string,children:React.ReactNode}){return <fieldset><legend>{title}</legend><div className="chips">{children}</div></fieldset>}
+const insta = () => {
+  const value = acaiConfig.contact.instagram.trim()
+  return !value ? null : value.startsWith('http') ? value : `https://instagram.com/${value.replace(/^@/, '')}`
+}
+
+function SafeLink({ href, children, className = '' }: { href: string | null; children: React.ReactNode; className?: string }) {
+  const [hint, setHint] = useState(false)
+  if (href) return <a href={href} className={className} target="_blank" rel="noreferrer">{children}</a>
+  return <button className={className} onClick={() => { setHint(true); setTimeout(() => setHint(false), 2000) }}>{children}{hint && <span className="hint">Contato será configurado para o cliente</span>}</button>
+}
+
+function Photo({ src, alt, className = '', eager = false }: { src: string; alt: string; className?: string; eager?: boolean }) {
+  return <img className={className} src={src} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+}
+
+function Intro() {
+  const [on, setOn] = useState(true)
+  useEffect(() => {
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const id = setTimeout(() => setOn(false), reduced ? 400 : 2100)
+    return () => clearTimeout(id)
+  }, [])
+  return on ? <div className="intro"><div className="orb o1"/><div className="orb o2"/><div className="intro-brand"><span>●</span><strong>AÇAÍ NATIVA</strong><small>Seu açaí. Seu momento. Seu jeito.</small></div></div> : null
+}
+
+function App() {
+  const [menu, setMenu] = useState(false)
+  const [size, setSize] = useState('500')
+  const [base, setBase] = useState('Açaí tradicional')
+  const [fruits, setFruits] = useState<string[]>(['Banana'])
+  const [comps, setComps] = useState<string[]>(['Granola'])
+  const [tops, setTops] = useState<string[]>([])
+
+  const toggle = (list: string[], set: (value: string[]) => void, value: string) => set(list.includes(value) ? list.filter(item => item !== value) : [...list, value])
+  const chosen = acaiConfig.sizes.find(item => item.id === size) ?? acaiConfig.sizes[0]
+  const msg = useMemo(() => `Olá! Vim pelo site da ${acaiConfig.brand.name} e gostaria de pedir:\n\nTamanho: ${chosen.label}\nBase: ${base}\nFrutas: ${fruits.join(', ') || 'Nenhuma'}\nComplementos: ${comps.join(', ') || 'Nenhum'}\nCobertura: ${tops.join(', ') || 'Nenhuma'}`, [chosen, base, fruits, comps, tops])
+  const generic = wa(`Olá! Vim pelo site da ${acaiConfig.brand.name} e gostaria de fazer um pedido.`)
+  const nav = [['Início', 'inicio'], ['Monte o seu', 'monte'], ['Cardápio', 'cardapio'], ['Combos', 'combos'], ['Localização', 'localizacao'], ['Contato', 'contato']]
+
+  return <>
+    <Intro/>
+    <header>
+      <a className="logo" href="#inicio" aria-label="Açaí Nativa - início"><span className="brand-mark"><i/><i/><i/></span><b>AÇAÍ<br/>NATIVA</b></a>
+      <nav className={menu ? 'open' : ''}>{nav.map(item => <a key={item[0]} href={`#${item[1]}`} onClick={() => setMenu(false)}>{item[0]}</a>)}</nav>
+      <div className="header-actions">
+        <SafeLink href={insta()} className="header-social"><Instagram size={19}/><span className="sr-only">Instagram</span></SafeLink>
+        <SafeLink href={generic} className="btn yellow small"><span>Pedir agora</span><MessageCircle size={18}/></SafeLink>
+        <button className="menu" aria-label="Abrir menu" onClick={() => setMenu(!menu)}>{menu ? <X/> : <Menu/>}</button>
+      </div>
+    </header>
+
+    <main>
+      <section className="hero" id="inicio">
+        <div className="hero-copy">
+          <span className="eyebrow"><Leaf size={15}/> frutas selecionadas todos os dias</span>
+          <h1>Seu açaí,<br/><em>do seu jeito.</em></h1>
+          <p>Cremoso, gelado e cheio de combinações pra deixar cada pedido único.</p>
+          <div className="actions"><a className="btn yellow" href="#monte">Montar meu açaí <ArrowRight size={18}/></a><SafeLink href={generic} className="btn light"><MessageCircle size={18}/> Fazer pedido</SafeLink></div>
+          <div className="notes"><span><Leaf/> Frutas frescas</span><span><Sparkles/> Várias combinações</span><span><Zap/> Pedido rápido</span></div>
+        </div>
+        <div className="hero-photo-wrap"><Photo src={acaiConfig.visual.hero} alt="Açaí cremoso com frutas frescas em fotografia gastronômica" className="hero-photo" eager/><span className="hero-glow"/></div>
+      </section>
+
+      <section className="section featured-section" id="cardapio">
+        <Title over="favoritos da casa" title="Comece por um Nativa." text="Combinações prontas para quando você quer escolher rápido e acertar."/>
+        <div className="products">{acaiConfig.featuredProducts.map(product => <article key={product.name}>
+          <Photo src={product.image} alt={`${product.name}: ${product.description}`} className="product-photo"/>
+          <div className="product-copy"><h3>{product.name}</h3><p>{product.description}</p><div className="product-bottom"><strong>{money(product.price)}</strong><SafeLink href={wa(`Olá! Quero pedir um ${product.name}.`)} className="icon"><MessageCircle size={18}/><span className="sr-only">Pedir {product.name}</span></SafeLink></div></div>
+        </article>)}</div>
+      </section>
+
+      <section className="sizes"><div className="section sizes-inner">
+        <div className="sizes-copy"><span className="eyebrow">do pequeno ao caprichado</span><h2>Escolha o tamanho ideal.</h2><p>Quatro tamanhos, a mesma base cremosa e espaço para criar sua combinação.</p></div>
+        <div className="size-grid">{acaiConfig.sizes.map(item => <article className={item.featured ? 'featured-size' : ''} key={item.id}>
+          <div className="size-photo-wrap"><div className={`size-cup size-cup-${item.id}`}><Photo src={item.image} alt={`Açaí servido na apresentação visual de ${item.label}`} className="size-photo"/><span className="size-brand">AÇAÍ<br/>NATIVA</span></div></div>
+          {item.featured ? <span className="popular">Mais pedido</span> : <span className="popular placeholder" aria-hidden="true">&nbsp;</span>}
+          <b>{item.label}</b><strong>{money(item.price)}</strong>
+        </article>)}</div>
+      </div></section>
+
+      <section className="section builder" id="monte">
+        <Title over="uma experiência simples" title="Monte seu açaí." text="Escolha cada camada. No final, o site prepara a mensagem do pedido para o WhatsApp."/>
+        <div className="builder-grid"><div className="builder-box">
+          <Group title="1. Escolha o tamanho">{acaiConfig.sizes.map(item => <button className={size === item.id ? 'chip active' : 'chip'} onClick={() => setSize(item.id)} key={item.id}><b>{item.label}</b><small>{money(item.price)}</small></button>)}</Group>
+          <Group title="2. Escolha a base">{acaiConfig.bases.map(item => <button className={base === item ? 'chip active' : 'chip'} onClick={() => setBase(item)} key={item}>{base === item && <Check size={14}/>} {item}</button>)}</Group>
+          <Group title="3. Escolha frutas">{acaiConfig.fruits.map(item => <button className={fruits.includes(item) ? 'chip active' : 'chip'} onClick={() => toggle(fruits, setFruits, item)} key={item}>{fruits.includes(item) && <Check size={14}/>} {item}</button>)}</Group>
+          <Group title="4. Complementos">{acaiConfig.complements.map(item => <button className={comps.includes(item) ? 'chip active' : 'chip'} onClick={() => toggle(comps, setComps, item)} key={item}>{comps.includes(item) && <Check size={14}/>} {item}</button>)}</Group>
+          <Group title="5. Coberturas">{acaiConfig.toppings.map(item => <button className={tops.includes(item) ? 'chip active' : 'chip'} onClick={() => toggle(tops, setTops, item)} key={item}>{tops.includes(item) && <Check size={14}/>} {item}</button>)}</Group>
+        </div><aside><span className="eyebrow pale">seu pedido</span><h3>{chosen.label} Nativa</h3><p><b>Base</b>{base}</p><p><b>Frutas</b>{fruits.join(', ') || '—'}</p><p><b>Complementos</b>{comps.join(', ') || '—'}</p><p><b>Cobertura</b>{tops.join(', ') || '—'}</p><strong>a partir de {money(chosen.price)}</strong><SafeLink href={wa(msg)} className="btn yellow builder-cta"><MessageCircle size={19}/> Pedir pelo WhatsApp</SafeLink></aside></div>
+      </section>
+
+      <section className="ingredients"><div className="section"><Title over="mais textura, mais sabor" title="Do fresco ao crocante."/><div className="ingredient-grid">{[['Frutas', acaiConfig.fruits], ['Cremes', ['Leite em pó', 'Creme de avelã', 'Creme branco', 'Creme de morango']], ['Crocantes', ['Granola', 'Paçoca', 'Amendoim', 'Cereal']], ['Coberturas', acaiConfig.toppings]].map((group, index) => <article key={group[0] as string}><span>0{index + 1}</span><h3>{group[0] as string}</h3>{(group[1] as readonly string[]).map(item => <p key={item}>{item}</p>)}</article>)}</div></div></section>
+
+      <section className="section specials-section"><Title over="combinações especiais" title="Quando a gente monta por você."/><div className="specials">{acaiConfig.specials.map((product, index) => <article key={product.name}><span>0{index + 1}</span><Photo src={product.image} alt={`${product.name}: ${product.description}`} className="special-photo"/><div className="special-copy"><h3>{product.name}</h3><p>{product.description}</p><div><strong>{money(product.price)}</strong><SafeLink href={wa(`Olá! Quero pedir um ${product.name}.`)} className="link">pedir <ArrowRight size={16}/></SafeLink></div></div></article>)}</div></section>
+
+      <section className="power"><div><span className="eyebrow pale">linha power</span><h2>Energia para o seu ritmo.</h2><p>Banana, pasta de amendoim, granola e mix proteico em uma combinação prática e cheia de textura.</p><SafeLink href={wa('Olá! Quero saber mais sobre a opção Nativa Power.')} className="btn yellow">Quero experimentar <ArrowRight size={18}/></SafeLink></div><Photo src={acaiConfig.visual.power} alt="Açaí com banana, morango, granola e pasta de amendoim" className="power-photo"/></section>
+
+      <section className="section" id="combos"><Title over="para dividir — ou não" title="Combos que resolvem."/><div className="combos">{acaiConfig.combos.map(combo => <article key={combo.name}><Photo src={combo.image} alt={`${combo.name}: ${combo.description}`} className="combo-photo"/><div className="combo-copy"><h3>{combo.name}</h3><p>{combo.description}</p><div><strong>{money(combo.price)}</strong><SafeLink href={wa(`Olá! Quero pedir o ${combo.name}.`)} className="btn yellow small">Pedir combo</SafeLink></div></div></article>)}</div></section>
+
+      <section className="gallery"><div className="section"><Title over="dá vontade só de olhar" title="Colorido de verdade."/><div className="gallery-grid">{acaiConfig.visual.gallery.map((photo, index) => <figure className={`gallery-item g${index + 1}`} key={photo.src}><Photo src={photo.src} alt={photo.alt}/></figure>)}<div className="social"><Instagram/><h3>Açaí que também dá vontade no feed.</h3><SafeLink href={insta()} className="link">Ver no Instagram <ArrowRight size={16}/></SafeLink></div></div></div></section>
+
+      <section className="section"><Title over="o que faz diferença" title="Simples, fresco, rápido."/><div className="features">{[['01', 'Ingredientes selecionados'], ['02', 'Frutas frescas'], ['03', 'Do seu jeito'], ['04', 'Pedido direto']].map(item => <article key={item[0]}><b>{item[0]}</b><h3>{item[1]}</h3><p>Uma experiência pensada para ser bonita, prática e fácil de pedir.</p></article>)}</div></section>
+
+      <section className="delivery"><div><span className="eyebrow pale">delivery</span><h2>Seu açaí chega até você.</h2><p>Escolha seu favorito, monte do seu jeito e finalize o contato pelo canal preferido.</p><div className="actions"><SafeLink href={generic} className="btn yellow"><MessageCircle size={18}/> Pedir pelo WhatsApp</SafeLink><SafeLink href={acaiConfig.links.menuUrl || null} className="btn outline">Abrir cardápio online</SafeLink></div></div><div className="delivery-photo-wrap"><Photo src={acaiConfig.visual.delivery} alt="Entrega de pedido em embalagem de papel" className="delivery-photo"/></div></section>
+
+      <section className="section location" id="localizacao"><div className="location-card"><div className="map"><MapPin/><span>Localização pronta para configurar</span></div><div><span className="eyebrow">onde encontrar</span><h2>Açaí Nativa</h2><p>{acaiConfig.location.address || 'Endereço será inserido aqui quando o site for adaptado para o cliente.'}</p><p><b>{[acaiConfig.location.city, acaiConfig.location.state].filter(Boolean).join(' • ') || 'Cidade e estado a definir'}</b></p><SafeLink href={acaiConfig.location.mapsUrl || null} className="btn dark"><MapPin size={18}/> Como chegar</SafeLink></div></div><div className="hours"><Clock3/><h3>Horários</h3>{acaiConfig.openingHours.map(item => <p key={item.label}><span>{item.label}</span><b>{item.value}</b></p>)}</div></section>
+
+      <section className="section faq"><Title over="perguntas rápidas" title="Antes da primeira colherada."/>{[['Como faço um pedido?', 'Use um dos botões de pedido. Com o WhatsApp configurado, a conversa abre com uma mensagem pronta.'], ['Posso montar meu próprio açaí?', 'Sim. A seção Monte seu açaí permite escolher tamanho, base, frutas, complementos e cobertura.'], ['Quais tamanhos existem?', '300 ml, 400 ml, 500 ml e 700 ml, todos editáveis na configuração.'], ['Vocês fazem delivery?', 'O site está preparado para direcionar o pedido ao canal configurado.'], ['Onde fica a loja?', 'A localização real será inserida na configuração do cliente.'], ['Como falar pelo WhatsApp?', 'Ao inserir um número real em acaiConfig, todos os botões passam a funcionar automaticamente.']].map(([q, a]) => <details key={q}><summary>{q}<ChevronDown/></summary><p>{a}</p></details>)}</section>
+
+      <section className="cta" id="contato"><span className="eyebrow pale">seu próximo favorito</span><h2>Já escolheu?</h2><p>Monte seu açaí e peça do seu jeito.</p><SafeLink href={generic} className="btn yellow">Fazer pedido <ArrowRight size={18}/></SafeLink></section>
+    </main>
+
+    <footer><div className="brand"><a className="logo" href="#inicio"><span className="brand-mark"><i/><i/><i/></span><b>AÇAÍ<br/>NATIVA</b></a><p>{acaiConfig.brand.tagline}</p></div><div><b>Navegação</b><a href="#monte">Monte o seu</a><a href="#cardapio">Cardápio</a><a href="#combos">Combos</a></div><div><b>Contato</b><SafeLink href={generic}>WhatsApp</SafeLink><SafeLink href={insta()}>Instagram</SafeLink><a href="#localizacao">Localização</a></div><div><b>Horários</b>{acaiConfig.openingHours.map(item => <span key={item.label}>{item.label}: {item.value}</span>)}</div><small>Desenvolvido por <strong>Yuukri</strong></small></footer>
+    <SafeLink href={generic} className="float-wa"><MessageCircle/><span className="sr-only">WhatsApp</span></SafeLink>
+  </>
+}
+
+function Title({ over, title, text }: { over: string; title: string; text?: string }) {
+  return <div className="title"><span className="eyebrow">{over}</span><h2>{title}</h2>{text && <p>{text}</p>}</div>
+}
+
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return <fieldset><legend>{title}</legend><div className="chips">{children}</div></fieldset>
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>)
