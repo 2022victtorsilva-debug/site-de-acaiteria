@@ -9,10 +9,10 @@ export const acaiConfig = {
     { label: 'Domingo', value: 'Horário a definir' },
   ],
   sizes: [
-    { id: '300', label: '300 ml', price: 12.9 },
-    { id: '400', label: '400 ml', price: 15.9 },
+    { id: '300', label: '300 ml', price: 12.9, featured: false },
+    { id: '400', label: '400 ml', price: 15.9, featured: false },
     { id: '500', label: '500 ml', price: 18.9, featured: true },
-    { id: '700', label: '700 ml', price: 24.9 },
+    { id: '700', label: '700 ml', price: 24.9, featured: false },
   ],
   bases: ['Açaí tradicional', 'Açaí com guaraná', 'Açaí zero adição'],
   fruits: ['Banana', 'Morango', 'Kiwi', 'Manga'],
