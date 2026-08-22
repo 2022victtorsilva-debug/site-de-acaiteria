@@ -1,0 +1,1 @@
+Premium photographic assets for the Acai Nativa portfolio site.
