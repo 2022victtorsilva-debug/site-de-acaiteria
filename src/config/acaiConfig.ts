@@ -1,5 +1,3 @@
-import atlasUrl from '../assets/acai-nativa-atlas.jpg'
-
 export const acaiConfig = {
   brand: { name: 'Açaí Nativa', tagline: 'Seu açaí. Seu momento. Seu jeito.' },
   contact: { whatsapp: '', instagram: '' },
@@ -11,23 +9,23 @@ export const acaiConfig = {
     { label: 'Domingo', value: 'Horário a definir' },
   ],
   visual: {
-    atlas: atlasUrl,
-    hero: 'https://images.pexels.com/photos/5232939/pexels-photo-5232939.jpeg?auto=compress&cs=tinysrgb&w=1400&fm=webp',
-    powerTile: 8,
-    deliveryTile: 19,
+    hero: 'https://images.pexels.com/photos/5232939/pexels-photo-5232939.jpeg',
+    sizeImage: 'https://images.pexels.com/photos/6637835/pexels-photo-6637835.jpeg',
+    power: 'https://images.pexels.com/photos/8230020/pexels-photo-8230020.jpeg',
+    delivery: 'https://images.pexels.com/photos/6684773/pexels-photo-6684773.jpeg',
     gallery: [
-      { tile: 14, alt: 'Chocolate cremoso caindo sobre granola e açaí em close' },
-      { tile: 15, alt: 'Mão segurando copo Açaí Nativa com produto bem visível' },
-      { tile: 16, alt: 'Dois copos Açaí Nativa lado a lado em composição de produto' },
-      { tile: 17, alt: 'Banana, morango, kiwi e complementos vistos de cima' },
-      { tile: 18, alt: 'Balcão moderno da Açaí Nativa com identidade roxa' },
+      { image: 'https://images.pexels.com/photos/5232938/pexels-photo-5232938.jpeg', alt: 'Açaí com morangos, frutas e granola em fotografia gastronômica' },
+      { image: 'https://images.pexels.com/photos/6637835/pexels-photo-6637835.jpeg', alt: 'Close de açaí com morangos e granola' },
+      { image: 'https://images.pexels.com/photos/4099236/pexels-photo-4099236.jpeg', alt: 'Duas tigelas de açaí com frutas, sementes e granola' },
+      { image: 'https://images.pexels.com/photos/29173451/pexels-photo-29173451.jpeg', alt: 'Açaí tropical com kiwi, morango e granola' },
+      { image: 'https://images.pexels.com/photos/4099234/pexels-photo-4099234.jpeg', alt: 'Composição de duas tigelas de açaí em mesa de madeira' },
     ],
   },
   sizes: [
-    { id: '300', label: '300 ml', price: 12.9, featured: false, tile: 4 },
-    { id: '400', label: '400 ml', price: 15.9, featured: false, tile: 5 },
-    { id: '500', label: '500 ml', price: 18.9, featured: true, tile: 6 },
-    { id: '700', label: '700 ml', price: 24.9, featured: false, tile: 7 },
+    { id: '300', label: '300 ml', price: 12.9, featured: false },
+    { id: '400', label: '400 ml', price: 15.9, featured: false },
+    { id: '500', label: '500 ml', price: 18.9, featured: true },
+    { id: '700', label: '700 ml', price: 24.9, featured: false },
   ],
   bases: [
     { name: 'Açaí tradicional', price: 0 },
@@ -54,19 +52,19 @@ export const acaiConfig = {
     { name: 'Calda de morango', price: 1.5 },
   ],
   featuredProducts: [
-    { name: 'Nativa Clássico', description: 'Açaí, banana, granola e leite em pó.', price: 16.9, tile: 0 },
-    { name: 'Nativa Tropical', description: 'Açaí, morango, banana e creme branco.', price: 18.9, tile: 1 },
-    { name: 'Nativa Crocante', description: 'Açaí, paçoca, granola e chocolate.', price: 19.9, tile: 2 },
-    { name: 'Explosão Nativa', description: 'Açaí, frutas, cremes e mix crocante.', price: 22.9, tile: 3 },
+    { name: 'Nativa Clássico', description: 'Açaí, banana, granola e leite em pó.', price: 16.9, image: 'https://images.pexels.com/photos/5150303/pexels-photo-5150303.jpeg' },
+    { name: 'Nativa Tropical', description: 'Açaí, morango, banana e creme branco.', price: 18.9, image: 'https://images.pexels.com/photos/29173451/pexels-photo-29173451.jpeg' },
+    { name: 'Nativa Crocante', description: 'Açaí, paçoca, granola e chocolate.', price: 19.9, image: 'https://images.pexels.com/photos/17597421/pexels-photo-17597421.jpeg' },
+    { name: 'Explosão Nativa', description: 'Açaí, frutas, cremes e mix crocante.', price: 22.9, image: 'https://images.pexels.com/photos/12273052/pexels-photo-12273052.jpeg' },
   ],
   specials: [
-    { name: 'Nativa Power', description: 'Banana, pasta de amendoim, granola e mix proteico.', price: 21.9, tile: 8 },
-    { name: 'Nativa Supreme', description: 'Morango, kiwi, creme de avelã, leite em pó e granola.', price: 24.9, tile: 13 },
-    { name: 'Nativa Fresh', description: 'Banana, manga, morango, mel e granola.', price: 20.9, tile: 12 },
+    { name: 'Nativa Power', description: 'Banana, pasta de amendoim, granola e mix proteico.', price: 21.9, image: 'https://images.pexels.com/photos/8230020/pexels-photo-8230020.jpeg' },
+    { name: 'Nativa Supreme', description: 'Morango, kiwi, creme de avelã, leite em pó e granola.', price: 24.9, image: 'https://images.pexels.com/photos/5232938/pexels-photo-5232938.jpeg' },
+    { name: 'Nativa Fresh', description: 'Banana, manga, morango, mel e granola.', price: 20.9, image: 'https://images.pexels.com/photos/6637835/pexels-photo-6637835.jpeg' },
   ],
   combos: [
-    { name: 'Combo Dupla', description: '2 açaís de 400 ml.', price: 29.9, tile: 9 },
-    { name: 'Combo Nativa', description: 'Açaí de 500 ml + acompanhamento.', price: 24.9, tile: 10 },
-    { name: 'Combo Família', description: '4 açaís de 400 ml.', price: 57.9, tile: 11 },
+    { name: 'Combo Dupla', description: '2 açaís de 400 ml.', price: 29.9, image: 'https://images.pexels.com/photos/4099236/pexels-photo-4099236.jpeg' },
+    { name: 'Combo Nativa', description: 'Açaí de 500 ml + acompanhamento.', price: 24.9, image: 'https://images.pexels.com/photos/4099233/pexels-photo-4099233.jpeg' },
+    { name: 'Combo Família', description: '4 açaís de 400 ml.', price: 57.9, image: 'https://images.pexels.com/photos/4099234/pexels-photo-4099234.jpeg' },
   ],
 } as const
